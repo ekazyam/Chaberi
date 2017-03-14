@@ -1,0 +1,150 @@
+#!/usr/bin/python3.4
+# coding: UTF-8
+# hello :)
+#
+# this tool is check the login time.
+# for example , like a uptime in linux system.
+import codecs
+import subprocess
+import hashlib
+import urllib
+import urllib.request
+import re
+import atexit
+import json
+import os.path
+import datetime
+import time
+import sys
+import io
+
+
+def main(user_info):
+    # target site.
+    URL = "http://hiratara.dyndns.org/chaberi/"
+    TMP, header = urllib.request.urlretrieve(URL)
+
+    atexit.register(delTmp, TMP)
+
+    # local tmp file dir.
+    LOCAL_TMP = "/tmp/login_time.json"
+
+    user_json = getTmpData(user_info, LOCAL_TMP)
+    # crate new user list.
+
+    # check new user.
+    user_info_keys = user_info.keys()
+    user_json_keys = user_json.keys()
+
+    for user_key in user_info_keys:
+        if not user_key in user_json_keys:
+            # not exist user data.
+            # this function exec when add the users dict.
+            user_json[user_key] = {}
+            user_json[user_key]['time'] = 0
+            user_json[user_key]['label'] = user_info[user_key]['label']
+
+    # read tmpfile and search.
+    # target user is definitions in main function.
+    filep = codecs.open(TMP, 'r', 'utf-8')
+    datas = filep.readlines()
+    filep.close()
+
+    for user in user_json_keys:
+        continue_flag = False
+        pattern = '<span class="member-name-lv\d{0,}\">' + \
+            user + ' {0,}</span>'
+        for line in datas:
+            result = re.search(pattern, line)
+            if result is not None:
+                # ditect target user login.
+                continue_flag = True
+                break
+        if continue_flag:
+            # FIX: new_time - old_time = logintime
+            user_json[user]['time'] = user_json[user]['time'] + 5
+        else:
+            user_json[user]['time'] = 0
+
+    writeTmpData(user_json, LOCAL_TMP)
+
+    createGraph(user_json)
+
+
+def createGraph(user_json):
+    user_keys = user_json.keys()
+    for key in user_keys:
+        print(user_json[key]['label'] + '.value', user_json[key]['time'])
+
+
+def writeTmpData(user_json, LOCAL_TMP):
+    user_filep = codecs.open(LOCAL_TMP, "w", 'utf-8')
+    json.dump(user_json, user_filep, ensure_ascii=False, indent=4,
+              sort_keys=True, separators=(',', ': '))
+    user_filep.close()
+
+
+def getTmpData(user_info, LOCAL_TMP):
+
+    if os.path.exists(LOCAL_TMP):
+        # json file has user name  and login time.
+        user_filep = codecs.open(LOCAL_TMP, "rb", "utf-8")
+        user_json = json.load(user_filep)
+        user_filep.close()
+    else:
+        # file not exist.
+        # init local tmp file.
+        user_filep = codecs.open(LOCAL_TMP, "w", 'utf-8')
+        keys = user_info.keys()
+        user_json = user_info
+        for user_name in keys:
+            user_json[user_name]['time'] = 0
+
+        json.dump(user_info, user_filep, ensure_ascii=False, indent=4,
+                  sort_keys=True, separators=(',', ': '))
+        user_filep.close()
+    # data type is dict.
+    return user_json
+
+
+def delTmp(tmp):
+    # when called this fucntion ,delete tmp file.
+    # tmp file using user serach.
+    subprocess.call(['rm', tmp])
+
+
+if __name__ == "__main__":
+    # set UTF-8
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    # search name.
+    # label -> use Graph Label.
+    #          not use multibyte.
+    user_info = {
+        'ほげ': {'label': 'hoge'},
+        'fuga': {'label': 'fugera'},
+    }
+
+    # prameter of warn and critical.
+    # this parameter will visible in graph.
+    warn = '60'
+    crit = '120'
+
+    if len(sys.argv) == 1:
+        main(user_info)
+    elif sys.argv[1] == "autoconf":
+        print('yes')
+        sys.exit()
+    elif sys.argv[1] == "config":
+        # graph common
+        print('graph_title chaberi login time')
+        print('graph_args -l 0 ')
+        print('graph_vlabel minutes')
+        print('graph_category mytool')
+
+        for user in user_name:
+            print(user + '.label ' + user)
+            print(user + '.draw AREA')
+            print(user + '.warning ' + warn)
+            print(user + 'critical ' + crit)
+
+        sys.exit()

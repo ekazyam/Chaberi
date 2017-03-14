@@ -2,7 +2,7 @@
 # coding: UTF-8
 # hello :)
 #
-# this tool is check the login time.
+# this tool is check the login time by munin.
 # for example , like a uptime in linux system.
 import codecs
 import subprocess
@@ -144,10 +144,12 @@ if __name__ == "__main__":
         print('graph_vlabel minutes')
         print('graph_category mytool')
 
-        for user in user_name:
-            print(user + '.label ' + user)
-            print(user + '.draw AREA')
-            print(user + '.warning ' + warn)
-            print(user + 'critical ' + crit)
+        user_names = user_info.values()
+        for user_name in user_names:
+            print(user_name['label'] + '.label ' +
+                  user_name['label'])
+            print(user_name['label'] + '.draw AREA')
+            print(user_name['label'] + '.warning ' + warn)
+            print(user_name['label'] + '.critical ' + crit)
 
         sys.exit()
